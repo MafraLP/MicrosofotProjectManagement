@@ -1,24 +1,43 @@
 version: "3.8"
 services:
-    database:
-        image: postgres:15
-        container_name: postgres_microsoft
-        ports:
-            - "5432:5432"
-        environment:
-            POSTGRES_USER: adonis
-            POSTGRES_PASSWORD: secret
-            POSTGRES_DB: microsoft_projects
-    frontend:
-        build:
-            context: ../mpm-app
-            dockerfile: Dockerfile
-        ports:
-            - "9000:9000"
-        volumes:
-            - ../mpm-app:/app
-            - /app/node_modules
-        stdin_open: true
-        tty: true
-        environment:
-            - HOST=0.0.0.0
+  database:
+    image: postgres:15
+    container_name: postgres_microsoft
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: adonis
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: microsoft_projects
+
+  frontend:
+    build:
+      context: ../mpm-app
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
+    volumes:
+      - ../mpm-app:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+    environment:
+      - HOST=0.0.0.0
+    networks:
+      - web  # Garantir que o frontend esteja na rede "web"
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    volumes:
+      - ../nginx/default.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "80:80"
+    networks:
+      - web  # Garantir que o nginx esteja na rede "web"
+    depends_on:
+      - frontend  # Garante que o frontend será iniciado antes do nginx
+
+networks:
+  web:
+    driver: bridge
