@@ -1,0 +1,23 @@
+# Usando a imagem oficial do Node.js como base
+FROM node:18-alpine
+
+# Defina o diretório de trabalho dentro do container
+WORKDIR /app
+
+# Copiar os arquivos de configuração do projeto (package.json, package-lock.json) para o diretório de trabalho
+COPY package*.json ./
+
+# Instalar as dependências do projeto
+RUN npm install
+
+# Instalar o Quasar CLI globalmente
+RUN npm install -g @quasar/cli
+
+# Copiar todo o código do projeto para o container
+COPY . .
+
+# Expor a porta onde a aplicação será servida
+EXPOSE 9000
+
+# Comando para rodar o servidor após o build
+CMD ["quasar", "dev", "--host"]
