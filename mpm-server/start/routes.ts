@@ -9,8 +9,14 @@
 
 import router from '@adonisjs/core/services/router'
 
-router.get('/', async () => {
-  return {
-    hello: 'world',
-  }
-})
+import clientesRota from '#start/clientes/clientes_rotas'
+
+router
+  .group(() => {
+    clientesRota()
+  })
+  .prefix('clientes')
+
+// router.group(() => {
+//   teamsRota()
+// }).prefix('teams')

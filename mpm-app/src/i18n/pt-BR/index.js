@@ -4,5 +4,9 @@ export default {
   project_name: 'Microsoft Project Management',
   email: 'Email',
   password: 'Senha',
-  login: 'Entrar'
+  login: 'Entrar',
+  errors: {
+    invalid_input: '{campo} inválido',
+    short_input: '{campo} deve possuir {min} caracteres',
+  }
 }
