@@ -31,9 +31,6 @@ export default {
         .then((response) => {
           this.authStore.login(response.data.data)
         })
-        .catch((error) => {
-          console.error(error);
-        });
     },
   },
 };

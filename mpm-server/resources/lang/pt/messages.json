@@ -1,0 +1,9 @@
+{
+  "errors": {
+    "default": "Algo deu errado",
+    "auth": {
+      "invalid_credentials": "Credenciais inválidas"
+    }
+  },
+  "errosimples": "erro simples"
+}

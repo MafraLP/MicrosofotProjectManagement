@@ -1,4 +1,5 @@
-import { HttpContext } from '@adonisjs/core/http'
+import type { HttpContext } from '@adonisjs/core/http'
+
 import BaseController from '#controllers/base_controller'
 import User from '#models/user'
 
@@ -7,17 +8,18 @@ export default class LoginController extends BaseController {
     try {
       const { email, password } = request.only(['email', 'password'])
 
-      // Valida o usuário
       const user = await User.query().where('email', email).first()
       if (!user || !(await user.verifyPassword(password))) {
-        return this.sendError({ response } as HttpContext, 'Credenciais inválidas', 401)
+        return this.sendError(
+          { response } as HttpContext,
+          'messages.errors.auth.invalid_credentials',
+          401
+        )
       }
 
-      // Gera Access e Refresh Tokens
       const tokens = await auth.use('jwt').generateTokens(user)
 
-      // Retorna os tokens para o cliente
-      return this.sendSuccess({ response } as HttpContext, 'Login bem-sucedido', 200, {
+      return this.sendSuccess({ response } as HttpContext, undefined, 200, {
         ...tokens,
         user: {
           id: user.id,
@@ -25,7 +27,7 @@ export default class LoginController extends BaseController {
         },
       })
     } catch (error) {
-      return this.sendError({ response } as HttpContext, 'Erro durante o login', 500, error)
+      return this.sendError({ response } as HttpContext, 'messages.errors.default', 500, error)
     }
   }
 }
