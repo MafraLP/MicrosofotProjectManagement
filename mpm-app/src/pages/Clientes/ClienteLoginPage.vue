@@ -16,21 +16,21 @@
 
 <script>
 import LoginForm from "pages/Forms/LoginForm.vue";
-import AuthApi from "src/api/clientes/AuthApi";
-import {useAuthStore} from "stores/useAuthStore";
+import AuthApi from "src/api/AuthApi";
+import { useAuthStore } from "stores/useAuthStore";
 
 export default {
-  components: {LoginForm},
+  components: { LoginForm },
   setup() {
     const authStore = useAuthStore();
     return { authStore };
   },
   methods: {
-    login({email, password}) {
-      AuthApi.login({email: email, password: password})
-        .then((response) => {
-          this.authStore.login(response.data.data)
-        })
+    login({ email, password }) {
+      AuthApi.login({ email: email, password: password }).then((response) => {
+        this.authStore.login(response.data.data);
+        this.$router.push("/projects");
+      });
     },
   },
 };

@@ -24,6 +24,7 @@ export default class LoginController extends BaseController {
         user: {
           id: user.id,
           email: user.email,
+          role: user.role,
         },
       })
     } catch (error) {

@@ -1,7 +1,8 @@
-import { defineStore } from 'pinia'
-import axios from 'axios'
+import { defineStore } from "pinia";
+import axios from "axios";
+import AuthApi from "src/api/AuthApi";
 
-export const useAuthStore = defineStore('auth', {
+export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null,
     accessToken: null,
@@ -9,54 +10,70 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: false,
   }),
 
+  getters: {
+    getUser: (state) => state.user || JSON.parse(localStorage.getItem("user")),
+    getAccessToken: (state) =>
+      state.accessToken || localStorage.getItem("accessToken"),
+    getRefreshToken: (state) =>
+      state.refreshToken || localStorage.getItem("refreshToken"),
+    getIsAuthenticated: (state) =>
+      state.isAuthenticated || !!localStorage.getItem("accessToken"),
+  },
+
   actions: {
     async login(data) {
-      console.log(data)
-      this.accessToken = data.accessToken.token
-      this.refreshToken = data.refreshToken.token
-      this.isAuthenticated = true
-
-      localStorage.setItem('accessToken', this.accessToken)
-      localStorage.setItem('refreshToken', this.refreshToken)
-      console.log(localStorage.getItem('accessToken'))
-      console.log(localStorage.getItem('refreshToken'))
-      console.log(this.accessToken)
-      console.log(this.refreshToken)
+      console.log("login", data);
+      this.accessToken = data.accessToken.token;
+      this.refreshToken = data.refreshToken.token;
+      this.user = data.user;
+      this.isAuthenticated = true;
+      localStorage.setItem("accessToken", this.accessToken);
+      localStorage.setItem("refreshToken", this.refreshToken);
+      localStorage.setItem("user", JSON.stringify(this.user));
     },
 
     async verifyAuth() {
-      if (this.isAuthenticated || localStorage.getItem('accessToken')) {
-        this.accessToken = localStorage.getItem('accessToken')
-        this.refreshToken = localStorage.getItem('refreshToken')
-        this.isAuthenticated = true
-        return true
+      if (this.isAuthenticated || localStorage.getItem("accessToken")) {
+        this.accessToken = localStorage.getItem("accessToken");
+        this.refreshToken = localStorage.getItem("refreshToken");
+        this.isAuthenticated = true;
+        return true;
       }
 
-      return false
+      return false;
+    },
+
+    async isUserAdmin() {
+      return !!(this.user && this.user.role === "admin");
+    },
+
+    async isUserCliente() {
+      return !!(this.user && this.user.role === "cliente");
+    },
+
+    async isUserTeams() {
+      return !!(this.user && this.user.role === "teams");
     },
 
     async refreshAccessToken() {
       try {
-        const response = await axios.post('/api/refresh', {}, {
-          headers: { Authorization: `Bearer ${this.refreshToken}` }
-        })
-        this.accessToken = response.data.data.accessToken
-        localStorage.setItem('accessToken', this.accessToken)
+        const response = await AuthApi.refresh();
+        this.accessToken = response.data.data.accessToken;
+        localStorage.setItem("accessToken", this.accessToken);
       } catch (error) {
-        console.error('Erro ao renovar o token', error)
-        this.logout()
+        console.error("Erro ao renovar o token", error);
+        this.logout();
       }
     },
 
-    // Logout
     logout() {
-      this.isAuthenticated = false
-      this.user = null
-      this.accessToken = null
-      this.refreshToken = null
+      this.isAuthenticated = false;
+      this.user = null;
+      this.accessToken = null;
+      this.refreshToken = null;
 
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('refreshToken')
-    }
-  }
-})
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+    },
+  },
+});

@@ -9,14 +9,27 @@
 
 import router from '@adonisjs/core/services/router'
 
-import clientesRota from '#start/clientes/clientes_rotas'
+import clientesRotas from '#start/clientes/clientes_rotas'
+import commonRotas from '#start/common/common_rotas'
+import teamsRotas from '#start/teams/teams_rotas'
+import { middleware } from '#start/kernel'
 
 router
   .group(() => {
-    clientesRota()
+    commonRotas()
+  })
+  .prefix('common')
+
+router
+  .group(() => {
+    clientesRotas()
   })
   .prefix('clientes')
+  .use([middleware.auth(), middleware.checkRole(['cliente', 'admin'])])
 
-// router.group(() => {
-//   teamsRota()
-// }).prefix('teams')
+router
+  .group(() => {
+    teamsRotas()
+  })
+  .prefix('teams')
+  .use([middleware.auth(), middleware.checkRole(['teams', 'admin'])])

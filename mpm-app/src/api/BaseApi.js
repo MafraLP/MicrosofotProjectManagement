@@ -1,24 +1,43 @@
-import api from 'axios';
-import { Notify } from 'quasar';
-import { useAuthStore } from 'stores/useAuthStore';
+import api from "axios";
+import { Notify } from "quasar";
+import { useAuthStore } from "stores/useAuthStore";
+import { createRouter, createRouter as $router } from "vue-router";
+import router from "src/router";
 
 class BaseApi {
   constructor(basePath) {
     this.api = api;
     this.api.defaults.baseURL = process.env.ADONIS_ENDPOINT + basePath;
+    this.setupRequestInterceptor();
     this.setupResponseInterceptor();
+  }
+
+  setupRequestInterceptor() {
+    this.api.interceptors.request.use(
+      (config) => {
+        const authStore = useAuthStore();
+        const token = authStore.getAccessToken;
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
   }
 
   setupResponseInterceptor() {
     this.api.interceptors.response.use(
-      this.handleResponseSuccess,
+      this.handleResponseSuccess.bind(this),
       this.handleResponseError.bind(this)
     );
   }
 
   handleResponseSuccess(response) {
     const { data } = response;
-    if (data && typeof data.code === 'number' && data.message) {
+    if (data && typeof data.code === "number" && data.message) {
       this.notifySuccess(data.message);
       return this.formatResponseData(data);
     }
@@ -27,11 +46,17 @@ class BaseApi {
 
   async handleResponseError(error) {
     const { response } = error;
+    if (response && response.status === 401) {
+      console.log("401");
+      if (useAuthStore().getRefreshToken) {
+        console.log("refresh");
+        return this.handleUnauthorizedError(error);
+      }
+      console.log("logout");
 
-    if (response && response.status === 401 && useAuthStore().refreshToken) {
-      return this.handleUnauthorizedError(error);
+      useAuthStore().logout();
+      await router().push("/login");
     }
-
     if (response?.data?.message) {
       this.notifyError(response.data.message);
     }
@@ -41,25 +66,29 @@ class BaseApi {
 
   async handleUnauthorizedError(error) {
     try {
-      await useAuthStore().refreshAccessToken();
+      const response = await useAuthStore().refreshAccessToken();
+      if (response.status === 201 && !response.data) {
+        useAuthStore().logout();
+        return Promise.reject(new Error("Sessão expirada"));
+      }
       return this.api(error.config);
     } catch (refreshError) {
-      console.error('Falha ao renovar token:', refreshError);
-      this.notifyError($t('errors.auth.session_expired'));
+      console.error("Falha ao renovar token:", refreshError);
+      this.notifyError($t("errors.auth.session_expired"));
       return Promise.reject(refreshError);
     }
   }
 
   notifySuccess(message) {
     Notify.create({
-      type: 'positive',
+      type: "positive",
       message,
     });
   }
 
   notifyError(message) {
     Notify.create({
-      type: 'negative',
+      type: "negative",
       message,
     });
   }

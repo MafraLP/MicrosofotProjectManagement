@@ -5,8 +5,12 @@
       v-model="email"
       type="text"
       required
-      :label="$t('email')"
-      :rules="[(val, rules) => rules.email(val) || $t('errors.invalid_input', {campo: $t('email')})]"
+      :label="$t('fields.email')"
+      :rules="[
+        (val, rules) =>
+          rules.email(val) ||
+          $t('errors.input.invalid', { input: $t('fields.email') }),
+      ]"
     />
     <q-input
       style="padding-top: 5px"
@@ -14,10 +18,23 @@
       v-model="password"
       type="password"
       required
-      :label="$t('password')"
-      :rules="[val => val.length >= 6 || $t('errors.short_input', {campo: $t('password'), min: 6})]"
+      :label="$t('fields.password')"
+      :rules="[
+        (val) =>
+          val.length >= 6 ||
+          $t('errors.input.short', {
+            input: $t('fields.password'),
+            min: 6,
+          }),
+      ]"
     />
-    <q-btn label="Login" color="primary" class="q-mt-md" style="width: 100%" @click="emitCredentials" />
+    <q-btn
+      color="primary"
+      class="q-mt-md"
+      style="width: 100%"
+      :label="$t('actions.login')"
+      @click="emitCredentials"
+    />
   </q-form>
 </template>
 
@@ -25,14 +42,14 @@
 export default {
   data() {
     return {
-      email: '',
-      password: ''
-    }
+      email: "",
+      password: "",
+    };
   },
   methods: {
     emitCredentials() {
-      this.$emit('submit', {email: this.email, password: this.password});
-    }
-  }
-}
+      this.$emit("submit", { email: this.email, password: this.password });
+    },
+  },
+};
 </script>

@@ -1,9 +1,10 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import type { Authenticators } from '@adonisjs/auth/types'
+import { sendError } from '../utils/response_formatter.ts'
 
 /**
- * Auth middleware is used authenticate HTTP requests and deny
+ * Auth middleware is used to authenticate HTTP requests and deny
  * access to unauthenticated users.
  */
 export default class AuthMiddleware {

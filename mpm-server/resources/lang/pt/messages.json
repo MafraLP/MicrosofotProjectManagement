@@ -1,9 +1,18 @@
 {
-  "errors": {
-    "default": "Algo deu errado",
-    "auth": {
-      "invalid_credentials": "Credenciais inválidas"
-    }
+  "errosimples": "erro simples",
+
+  "project_proposal": "Proposta de Projeto",
+  "project": "Projeto",
+
+  "success": {
+    "created": "{object} criado com sucesso."
   },
-  "errosimples": "erro simples"
+
+  "errors": {
+    "auth": {
+      "invalid_credentials": "Credenciais inválidas.",
+      "unauthorized": "Você não possui autorização para essa operação."
+    },
+    "default": "Algo deu errado."
+  }
 }

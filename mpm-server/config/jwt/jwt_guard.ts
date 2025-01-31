@@ -2,6 +2,7 @@ import { symbols, errors } from '@adonisjs/auth'
 import { AuthClientResponse, GuardContract } from '@adonisjs/auth/types'
 import { JwtUserProviderContract } from '../../app/auth/guards/jwt.js'
 import { HttpContext } from '@adonisjs/core/http'
+import { sendError } from '../../app/utils/response_formatter.ts'
 
 import jwt from 'jsonwebtoken'
 
@@ -11,14 +12,14 @@ export type JwtGuardOptions = {
   refreshTokenExpiresIn: string | number
 }
 
-export class JwtGuard<UserProvider extends JwtUserProviderContract<unknown>>
-  implements GuardContract<UserProvider[typeof symbols.PROVIDER_REAL_USER]>
+export class JwtGuard<JwtUserProvider extends JwtUserProviderContract<unknown>>
+  implements GuardContract<JwtUserProvider[typeof symbols.PROVIDER_REAL_USER]>
 {
   #ctx: HttpContext
-  #userProvider: UserProvider
+  #userProvider: JwtUserProvider
   #options: JwtGuardOptions
 
-  constructor(ctx: HttpContext, userProvider: UserProvider, options: JwtGuardOptions) {
+  constructor(ctx: HttpContext, userProvider: JwtUserProvider, options: JwtGuardOptions) {
     this.#ctx = ctx
     this.#userProvider = userProvider
     this.#options = options
@@ -49,12 +50,12 @@ export class JwtGuard<UserProvider extends JwtUserProviderContract<unknown>>
   /**
    * Reference to the currently authenticated user
    */
-  user?: UserProvider[typeof symbols.PROVIDER_REAL_USER]
+  user?: JwtUserProvider[typeof symbols.PROVIDER_REAL_USER]
 
   /**
    * Generate a JWT token for a given user.
    */
-  async generate(user: UserProvider[typeof symbols.PROVIDER_REAL_USER]) {
+  async generate(user: JwtUserProvider[typeof symbols.PROVIDER_REAL_USER]) {
     const providerUser = await this.#userProvider.createUserForGuard(user)
 
     const accessToken = jwt.sign(
@@ -86,10 +87,9 @@ export class JwtGuard<UserProvider extends JwtUserProviderContract<unknown>>
    * the user instance if there is a valid JWT token
    * or throw an exception
    */
-  async authenticate(): Promise<UserProvider[typeof symbols.PROVIDER_REAL_USER]> {
+  async authenticate(): Promise<JwtUserProvider[typeof symbols.PROVIDER_REAL_USER]> {
     /**
-     * Avoid re-authentication when it has been done already
-     * for the given request
+     * Evita re-autenticação quando já foi feita para a requisição atual
      */
     if (this.authenticationAttempted) {
       return this.getUserOrFail()
@@ -97,54 +97,59 @@ export class JwtGuard<UserProvider extends JwtUserProviderContract<unknown>>
     this.authenticationAttempted = true
 
     /**
-     * Ensure the auth header exists
+     * Garante que o cabeçalho de autenticação exista
      */
     const authHeader = this.#ctx.request.header('authorization')
     if (!authHeader) {
-      throw new errors.E_UNAUTHORIZED_ACCESS('Unauthorized access', {
-        guardDriverName: this.driverName,
-      })
+      sendError(this.#ctx, undefined, 401)
+      return
     }
 
     /**
-     * Split the header value and read the token from it
+     * Divide o valor do cabeçalho e lê o token dele
      */
     const [, token] = authHeader.split('Bearer ')
     if (!token) {
-      throw new errors.E_UNAUTHORIZED_ACCESS('Unauthorized access', {
-        guardDriverName: this.driverName,
-      })
+      sendError(this.#ctx, undefined, 401)
+      return
     }
 
     /**
-     * Verify token
+     * Verifica o token
      */
-    const payload = jwt.verify(token, this.#options.secret)
-    if (typeof payload !== 'object' || !('userId' in payload)) {
-      throw new errors.E_UNAUTHORIZED_ACCESS('Unauthorized access', {
-        guardDriverName: this.driverName,
-      })
+    let payload
+    try {
+      payload = jwt.verify(token, this.#options.secret)
+    } catch (error) {
+      sendError(this.#ctx, undefined, 401, error)
+      return
+    }
+
+    if (typeof payload !== 'object' || !('userId' in payload) || !('role' in payload)) {
+      sendError(this.#ctx, undefined, 401)
+      return
     }
 
     /**
-     * Fetch the user by user ID and save a reference to it
+     * Busca o usuário pelo ID e salva uma referência a ele
      */
     const providerUser = await this.#userProvider.findById(payload.userId)
     if (!providerUser) {
-      throw new errors.E_UNAUTHORIZED_ACCESS('Unauthorized access', {
-        guardDriverName: this.driverName,
-      })
+      sendError(this.#ctx, undefined, 401)
+      return
     }
 
     this.user = providerUser.getOriginal()
+
     return this.getUserOrFail()
   }
+  async generateTokens(user: JwtUserProvider[typeof symbols.PROVIDER_REAL_USER]) {
+    console.log('Chamando createUserForGuard')
 
-  async generateTokens(user: UserProvider[typeof symbols.PROVIDER_REAL_USER]) {
     const providerUser = await this.#userProvider.createUserForGuard(user)
 
     const accessToken = jwt.sign(
-      { userId: providerUser.getId(), type: 'access' },
+      { userId: providerUser.getId(), type: 'access', role: providerUser.getRole() },
       this.#options.secret,
       { expiresIn: this.#options.accessTokenExpiresIn }
     )
@@ -168,7 +173,6 @@ export class JwtGuard<UserProvider extends JwtUserProviderContract<unknown>>
       },
     }
   }
-
   /**
    * Same as authenticate, but does not throw an exception
    */
@@ -184,7 +188,7 @@ export class JwtGuard<UserProvider extends JwtUserProviderContract<unknown>>
   /**
    * Returns the authenticated user or throws an error
    */
-  getUserOrFail(): UserProvider[typeof symbols.PROVIDER_REAL_USER] {
+  getUserOrFail(): JwtUserProvider[typeof symbols.PROVIDER_REAL_USER] {
     if (!this.user) {
       throw new errors.E_UNAUTHORIZED_ACCESS('Unauthorized access', {
         guardDriverName: this.driverName,
@@ -199,7 +203,7 @@ export class JwtGuard<UserProvider extends JwtUserProviderContract<unknown>>
    * method is used to login the user.
    */
   async authenticateAsClient(
-    user: UserProvider[typeof symbols.PROVIDER_REAL_USER]
+    user: JwtUserProvider[typeof symbols.PROVIDER_REAL_USER]
   ): Promise<AuthClientResponse> {
     const token = await this.generate(user)
     return {

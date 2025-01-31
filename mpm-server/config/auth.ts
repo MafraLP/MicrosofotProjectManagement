@@ -1,6 +1,5 @@
 import { defineConfig } from '@adonisjs/auth'
-import type { InferAuthenticators, InferAuthEvents, Authenticators } from '@adonisjs/auth/types'
-import { sessionUserProvider } from '@adonisjs/auth/session'
+import JwtUserProvider from '../app/auth/guards/jwt_user_provider.js'
 import env from '#start/env'
 import { JwtGuard } from '#config/jwt/jwt_guard'
 
@@ -9,9 +8,9 @@ const jwtConfig = {
   accessTokenExpiresIn: '10m',
   refreshTokenExpiresIn: '2d',
 }
-const userProvider = sessionUserProvider({
-  model: () => import('#models/user'),
-})
+
+// Ajuste para usar JwtUserProvider
+const userProvider = new JwtUserProvider()
 
 const authConfig = defineConfig({
   default: 'jwt',
@@ -23,14 +22,3 @@ const authConfig = defineConfig({
 })
 
 export default authConfig
-
-/**
- * Inferring types from the configured auth
- * guards.
- */
-declare module '@adonisjs/auth/types' {
-  export interface Authenticators extends InferAuthenticators<typeof authConfig> {}
-}
-declare module '@adonisjs/core/types' {
-  interface EventsList extends InferAuthEvents<Authenticators> {}
-}
