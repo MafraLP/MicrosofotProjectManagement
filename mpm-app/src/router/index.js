@@ -9,6 +9,7 @@ import routes from "./routes";
 import ClientesRoutes from "./ClientesRoutes";
 import TeamsRoutes from "./TeamsRoutes";
 import { useAuthStore } from "stores/useAuthStore";
+import { setRouter } from "src/api/BaseApi"; // Importando a função setRouter
 
 let router = null;
 
@@ -17,15 +18,21 @@ export default route(function (/* { store, ssrContext } */) {
     const createHistory = process.env.SERVER
       ? createMemoryHistory
       : process.env.VUE_ROUTER_MODE === "history"
-      ? createWebHistory
-      : createWebHashHistory;
+        ? createWebHistory
+        : createWebHashHistory;
 
     const host = window.location.host;
     const parts = host.split(".");
     const domainLength = 2; // about.mpm => domain length = 2
 
+    let applyAuthGuard = true;
+
     let selectedRoutes;
-    if (parts.length === domainLength - 1 || parts[0] === "www") {
+
+    if (parts[0] === "about") {
+      selectedRoutes = routes;
+      applyAuthGuard = false;
+    } else if (parts.length === domainLength - 1 || parts[0] === "www") {
       selectedRoutes = routes;
     } else if (parts[0] === "clientes") {
       selectedRoutes = ClientesRoutes;
@@ -41,14 +48,32 @@ export default route(function (/* { store, ssrContext } */) {
       history: createHistory(process.env.VUE_ROUTER_BASE),
     });
 
-    router.beforeEach((to, from, next) => {
-      const authStore = useAuthStore();
-      if (to.path !== "/login" && !authStore.verifyAuth()) {
-        next("/login");
-      } else {
+    setRouter(router);
+
+    if (applyAuthGuard) {
+
+      router.beforeEach((to, from, next) => {
+
+        const authStore = useAuthStore();
+        const publicPages = ['/login']; // Adicione outras rotas públicas aqui
+        const authRequired = !publicPages.includes(to.path);
+
+        if (authRequired) {
+          const isAuth = authStore.verifyAuth();
+
+          if (!isAuth) {
+            next('/login');
+            return;
+          }
+        }
+
         next();
-      }
-    });
+      });
+    } else {
+      router.beforeEach((to, from, next) => {
+        next();
+      });
+    }
   }
 
   return router;

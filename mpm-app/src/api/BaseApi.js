@@ -1,12 +1,16 @@
-import api from "axios";
+import axios from "axios";
 import { Notify } from "quasar";
 import { useAuthStore } from "stores/useAuthStore";
-import { createRouter, createRouter as $router } from "vue-router";
-import router from "src/router";
+
+let routerInstance = null;
+
+export function setRouter(router) {
+  routerInstance = router;
+}
 
 class BaseApi {
   constructor(basePath) {
-    this.api = api;
+    this.api = axios;
     this.api.defaults.baseURL = process.env.ADONIS_ENDPOINT + basePath;
     this.setupRequestInterceptor();
     this.setupResponseInterceptor();
@@ -46,17 +50,39 @@ class BaseApi {
 
   async handleResponseError(error) {
     const { response } = error;
-    if (response && response.status === 401) {
-      console.log("401");
-      if (useAuthStore().getRefreshToken) {
-        console.log("refresh");
-        return this.handleUnauthorizedError(error);
-      }
-      console.log("logout");
 
-      useAuthStore().logout();
-      await router().push("/login");
+
+    if (response && response.status === 401) {
+      const authStore = useAuthStore();
+
+      // Log para debug
+
+      if (authStore.getRefreshToken) {
+        try {
+          return await this.handleUnauthorizedError(error);
+        } catch (refreshError) {
+          authStore.logout();
+          this.notifyError("Sessão expirada. Por favor, faça login novamente.");
+
+          if (routerInstance) {
+            routerInstance.push("/login");
+          } else {
+            console.error("Router não disponível para redirecionamento");
+          }
+
+          return Promise.reject(error);
+        }
+      } else {
+        authStore.logout();
+
+        this.notifyError("Sessão inválida. Por favor, faça login.");
+
+        if (routerInstance) {
+          routerInstance.push("/login");
+        }
+      }
     }
+
     if (response?.data?.message) {
       this.notifyError(response.data.message);
     }
@@ -65,17 +91,14 @@ class BaseApi {
   }
 
   async handleUnauthorizedError(error) {
+    const authStore = useAuthStore();
+
     try {
-      const response = await useAuthStore().refreshAccessToken();
-      if (response.status === 201 && !response.data) {
-        useAuthStore().logout();
-        return Promise.reject(new Error("Sessão expirada"));
-      }
+      await authStore.refreshAccessToken();
+
       return this.api(error.config);
     } catch (refreshError) {
-      console.error("Falha ao renovar token:", refreshError);
-      this.notifyError($t("errors.auth.session_expired"));
-      return Promise.reject(refreshError);
+      throw refreshError; // Propagar erro para ser tratado pelo catch no handleResponseError
     }
   }
 
@@ -90,6 +113,14 @@ class BaseApi {
     Notify.create({
       type: "negative",
       message,
+      timeout: 5000,
+      actions: [
+        { label: 'Login', color: 'white', handler: () => {
+            if (routerInstance) {
+              routerInstance.push("/login");
+            }
+          }}
+      ]
     });
   }
 

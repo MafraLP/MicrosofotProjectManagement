@@ -11,7 +11,7 @@ export const useAuthStore = defineStore("auth", {
   }),
 
   getters: {
-    getUser: (state) => state.user || JSON.parse(localStorage.getItem("user")),
+    getUser: (state) => state.user || JSON.parse(localStorage.getItem("user") || "null"),
     getAccessToken: (state) =>
       state.accessToken || localStorage.getItem("accessToken"),
     getRefreshToken: (state) =>
@@ -22,7 +22,6 @@ export const useAuthStore = defineStore("auth", {
 
   actions: {
     async login(data) {
-      console.log("login", data);
       this.accessToken = data.accessToken.token;
       this.refreshToken = data.refreshToken.token;
       this.user = data.user;
@@ -32,9 +31,11 @@ export const useAuthStore = defineStore("auth", {
       localStorage.setItem("user", JSON.stringify(this.user));
     },
 
-    async verifyAuth() {
-      if (this.isAuthenticated || localStorage.getItem("accessToken")) {
-        this.accessToken = localStorage.getItem("accessToken");
+    verifyAuth() {
+      const storedToken = localStorage.getItem("accessToken");
+
+      if (this.isAuthenticated || storedToken) {
+        this.accessToken = storedToken;
         this.refreshToken = localStorage.getItem("refreshToken");
         this.isAuthenticated = true;
         return true;
@@ -43,16 +44,19 @@ export const useAuthStore = defineStore("auth", {
       return false;
     },
 
-    async isUserAdmin() {
-      return !!(this.user && this.user.role === "admin");
+    isUserAdmin() {
+      const user = this.getUser;
+      return !!(user && user.role === "admin");
     },
 
-    async isUserCliente() {
-      return !!(this.user && this.user.role === "cliente");
+    isUserCliente() {
+      const user = this.getUser;
+      return !!(user && user.role === "cliente");
     },
 
-    async isUserTeams() {
-      return !!(this.user && this.user.role === "teams");
+    isUserTeams() {
+      const user = this.getUser;
+      return !!(user && user.role === "teams");
     },
 
     async refreshAccessToken() {
@@ -60,9 +64,10 @@ export const useAuthStore = defineStore("auth", {
         const response = await AuthApi.refresh();
         this.accessToken = response.data.data.accessToken;
         localStorage.setItem("accessToken", this.accessToken);
+        return response;
       } catch (error) {
-        console.error("Erro ao renovar o token", error);
         this.logout();
+        throw error;
       }
     },
 
@@ -74,6 +79,7 @@ export const useAuthStore = defineStore("auth", {
 
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
     },
   },
 });

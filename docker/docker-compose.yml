@@ -15,7 +15,7 @@ services:
       context: ../mpm-app
       dockerfile: Dockerfile
     ports:
-      - "9000:9000"
+      - "3000:3000"
     volumes:
       - ../mpm-app:/app
       - /app/node_modules

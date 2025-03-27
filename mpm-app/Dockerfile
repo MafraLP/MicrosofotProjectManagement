@@ -17,7 +17,7 @@ RUN npm install -g @quasar/cli
 COPY . .
 
 # Expor a porta onde a aplicação será servida
-EXPOSE 9000
+EXPOSE 3000
 
 # Comando para rodar o servidor após o build
-CMD ["quasar", "dev", "--host"]
+CMD ["quasar", "dev", "--host", "0.0.0.0", "--port", "3000", "--no-hmr"]
